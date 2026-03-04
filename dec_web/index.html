@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TT 图片解码器</title>
+  <style>
+    :root {
+      --bg: #f4f6f1;
+      --bg2: #e8efe7;
+      --card: #fffef9;
+      --ink: #1f2a22;
+      --muted: #59685d;
+      --accent: #1d7a56;
+      --accent2: #d48b22;
+      --line: #d5ded3;
+      --danger: #9f2f29;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(212, 139, 34, 0.16), transparent 36%),
+        radial-gradient(circle at 88% 92%, rgba(29, 122, 86, 0.18), transparent 30%),
+        linear-gradient(130deg, var(--bg), var(--bg2));
+      padding: 16px;
+    }
+
+    .wrap {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      box-shadow: 0 24px 48px rgba(20, 34, 24, 0.1);
+      overflow: hidden;
+    }
+
+    .head {
+      padding: 18px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.22rem;
+      letter-spacing: 0.02em;
+    }
+
+    .sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .row {
+      padding: 14px 18px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(29, 122, 86, 0.15);
+    }
+
+    .drop {
+      border: 2px dashed #b8c5ba;
+      border-radius: 14px;
+      padding: 26px 14px;
+      text-align: center;
+      background: #fafcf7;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      cursor: pointer;
+    }
+
+    .drop.dragover {
+      border-color: var(--accent);
+      background: #eff8f2;
+    }
+
+    .drop strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .drop small {
+      color: var(--muted);
+    }
+
+    .btnline {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: #fff;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #2a9565);
+      cursor: pointer;
+    }
+
+    .btn.secondary {
+      background: linear-gradient(135deg, #6d7970, #5a655d);
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.86rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .log {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfdf9;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
+    .title2 {
+      margin: 0;
+      padding: 14px 18px 0;
+      font-size: 1.02rem;
+    }
+
+    .grid {
+      padding: 14px 18px 18px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      background: #f8fbf6;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 240px;
+    }
+
+    .thumb {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      cursor: zoom-in;
+      background: #eef3ec;
+    }
+
+    .meta {
+      padding: 10px;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: #2a382d;
+      word-break: break-all;
+    }
+
+    .meta .name {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .actions {
+      padding: 0 10px 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .actions button {
+      flex: 1;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1e7b57, #2f9869);
+    }
+
+    .actions button.alt {
+      background: linear-gradient(135deg, #b67817, #cb8a24);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 12, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+    }
+
+    .modal.open { display: flex; }
+
+    .modal img {
+      max-width: min(1100px, 100%);
+      max-height: calc(100vh - 48px);
+      border-radius: 10px;
+      box-shadow: 0 22px 44px rgba(0, 0, 0, 0.35);
+    }
+
+    @media (max-width: 640px) {
+      .row, .head, .grid { padding-left: 12px; padding-right: 12px; }
+      .title2 { padding-left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="head">
+      <h1>TT 图片解码器（纯前端静态页）</h1>
+      <p class="sub">密码放最上方；拖入或选择图片后会自动解码。解码结果会显示在下方列表，支持点击放大和下载。</p>
+    </section>
+
+    <section class="row">
+      <label for="password">密码（无密码可留空）</label>
+      <input id="password" type="password" placeholder="先输入密码，再拖入/选择图片" />
+    </section>
+
+    <section class="row">
+      <div id="dropZone" class="drop">
+        <strong>拖入图片到这里，或点击选择图片</strong>
+        <small>支持多图批量；选择后自动开始解码</small>
+        <div class="btnline">
+          <button id="pickBtn" class="btn" type="button">选择图片</button>
+          <button id="clearBtn" class="btn secondary" type="button">清空结果</button>
+        </div>
+      </div>
+      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+      <div class="hint">解码规则：优先新版（上下各跳过 20%），失败自动回退旧版（顶部 5%）。</div>
+      <pre id="log" class="log"></pre>
+    </section>
+
+    <h2 class="title2">解码结果</h2>
+    <section id="resultGrid" class="grid">
+      <div class="empty">暂无解码结果</div>
+    </section>
+  </main>
+
+  <div id="imgModal" class="modal">
+    <img id="modalImg" alt="preview" />
+  </div>
+
+  <script>
+    const enc = new TextEncoder();
+    const dec = new TextDecoder("utf-8", { fatal: false });
+
+    const passwordInput = document.getElementById("password");
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const pickBtn = document.getElementById("pickBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const logEl = document.getElementById("log");
+    const resultGrid = document.getElementById("resultGrid");
+    const imgModal = document.getElementById("imgModal");
+    const modalImg = document.getElementById("modalImg");
+
+    const createdUrls = [];
+
+    function log(msg) {
+      const line = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.textContent += (logEl.textContent ? "\n" : "") + line;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearAll() {
+      for (const u of createdUrls) URL.revokeObjectURL(u);
+      createdUrls.length = 0;
+      resultGrid.innerHTML = '<div class="empty">暂无解码结果</div>';
+      logEl.textContent = "";
+    }
+
+    function isImageExt(ext) {
+      return ["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext.toLowerCase());
+    }
+
+    function mimeByExt(ext) {
+      const e = ext.toLowerCase();
+      if (e === "png") return "image/png";
+      if (e === "jpg" || e === "jpeg") return "image/jpeg";
+      if (e === "webp") return "image/webp";
+      if (e === "gif") return "image/gif";
+      if (e === "bmp") return "image/bmp";
+      return "application/octet-stream";
+    }
+
+    function sanitizeFileName(name) {
+      return name.replace(/[\\/:*?"<>|]+/g, "_");
+    }
+
+    function bytesToMB(n) {
+      if (n < 1024) return `${n} B`;
+      if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+      return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function hexOf(bytes) {
+      let out = "";
+      for (let i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, "0");
+      return out;
+    }
+
+    function eqBytes(a, b) {
+      if (a.length !== b.length) return false;
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+      return diff === 0;
+    }
+
+    function concatBytes(a, b) {
+      const out = new Uint8Array(a.length + b.length);
+      out.set(a, 0);
+      out.set(b, a.length);
+      return out;
+    }
+
+    async function sha256Bytes(bytes) {
+      const hash = await crypto.subtle.digest("SHA-256", bytes);
+      return new Uint8Array(hash);
+    }
+
+    function readUint32FromBits(lsb, offset) {
+      let val = 0;
+      for (let i = 0; i < 32; i++) val = (val << 1) | lsb[offset + i];
+      return val >>> 0;
+    }
+
+    function readUint8FromBits(lsb, offset) {
+      let val = 0;
+      for (let i = 0; i < 8; i++) val = (val << 1) | lsb[offset + i];
+      return val;
+    }
+
+    function bitsToBytes(lsb, startBit, bitLen) {
+      const n = Math.floor(bitLen / 8);
+      const out = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        let v = 0;
+        const base = startBit + i * 8;
+        for (let j = 0; j < 8; j++) v = (v << 1) | lsb[base + j];
+        out[i] = v;
+      }
+      return out;
+    }
+
+    function extractLsbByRule(data, width, height, topSkipRatio, bottomSkipRatio) {
+      const top = Math.floor(height * topSkipRatio);
+      const bottom = Math.floor(height * bottomSkipRatio);
+      const startY = top;
+      const endY = height - bottom;
+      if (endY <= startY) throw new Error("可用区域为空");
+
+      const totalBits = (endY - startY) * width * 3;
+      const lsb = new Uint8Array(totalBits);
+      let p = 0;
+      for (let y = startY; y < endY; y++) {
+        const row = y * width * 4;
+        for (let x = 0; x < width; x++) {
+          const i = row + x * 4;
+          lsb[p++] = data[i] & 1;
+          lsb[p++] = data[i + 1] & 1;
+          lsb[p++] = data[i + 2] & 1;
+        }
+      }
+      return lsb;
+    }
+
+    async function generateKeyStream(password, salt, length) {
+      const keyMaterial = enc.encode(password + hexOf(salt));
+      const hashesNeeded = Math.ceil(length / 32);
+      const keyStream = new Uint8Array(length);
+      for (let i = 0; i < hashesNeeded; i++) {
+        const combined = concatBytes(keyMaterial, enc.encode(String(i)));
+        const hash = await sha256Bytes(combined);
+        const start = i * 32;
+        const end = Math.min(start + 32, length);
+        keyStream.set(hash.subarray(0, end - start), start);
+      }
+      return keyStream;
+    }
+
+    async function verifyPassword(password, salt, storedHash) {
+      const h = await sha256Bytes(enc.encode(password + hexOf(salt)));
+      return eqBytes(h, storedHash);
+    }
+
+    async function decryptData(encrypted, password, salt) {
+      const key = await generateKeyStream(password, salt, encrypted.length);
+      const out = new Uint8Array(encrypted.length);
+      for (let i = 0; i < encrypted.length; i++) out[i] = encrypted[i] ^ key[i];
+      return out;
+    }
+
+    function parseNormalHeader(header) {
+      if (header.length < 5) throw new Error("普通头过短");
+      const extLen = header[0];
+      if (header.length < 1 + extLen + 4) throw new Error("普通头结构错误");
+      const ext = dec.decode(header.subarray(1, 1 + extLen)).trim();
+      const data = header.subarray(1 + extLen + 4);
+      return { ext, data };
+    }
+
+    async function parsePwHeader(header, password) {
+      if (header.length < 1) throw new Error("加密头过短");
+      const hasPw = header[0] === 1;
+      let offset = 1;
+      let salt = null;
+
+      if (hasPw) {
+        if (header.length < 50) throw new Error("加密头长度不足");
+        const storedHash = header.subarray(1, 33);
+        salt = header.subarray(33, 49);
+        if (!(await verifyPassword(password, salt, storedHash))) throw new Error("密码错误");
+        offset = 49;
+      }
+
+      const extLen = header[offset];
+      if (header.length < offset + 1 + extLen + 4) throw new Error("加密头结构错误");
+
+      const ext = dec.decode(header.subarray(offset + 1, offset + 1 + extLen)).trim();
+      let data = header.subarray(offset + 1 + extLen + 4);
+      if (hasPw) data = await decryptData(data, password, salt);
+      return { ext, data };
+    }
+
+    async function decodeWithRule(imgData, width, height, password, rule) {
+      const lsb = extractLsbByRule(imgData, width, height, rule.top, rule.bottom);
+      if (lsb.length < 40) throw new Error("数据不足");
+
+      const headerLen = readUint32FromBits(lsb, 0);
+      const firstByte = readUint8FromBits(lsb, 32);
+      const totalBits = 32 + headerLen * 8;
+
+      if (totalBits <= 32 || totalBits > lsb.length) throw new Error("头长度异常");
+      if (firstByte === 1 && !password) throw new Error("检测到加密，但密码为空");
+
+      const header = bitsToBytes(lsb, 32, headerLen * 8);
+      if (firstByte === 1) return { ...(await parsePwHeader(header, password)), rule: rule.name };
+      if (firstByte === 0 || (firstByte >= 3 && firstByte <= 255)) return { ...parseNormalHeader(header), rule: rule.name };
+      throw new Error("未知类型字节");
+    }
+
+    async function decodeImage(file, password) {
+      const bmp = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(bmp, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+      const rules = [
+        { name: "新版 20%/20%", top: 0.2, bottom: 0.2 },
+        { name: "旧版 5%/0%", top: 0.05, bottom: 0.0 }
+      ];
+
+      let lastErr = null;
+      for (const rule of rules) {
+        try {
+          return await decodeWithRule(data, canvas.width, canvas.height, password, rule);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error("解码失败");
+    }
+
+    function addResultCard(sourceName, ext, bytes, rule) {
+      if (resultGrid.querySelector(".empty")) resultGrid.innerHTML = "";
+
+      const stem = sourceName.includes(".") ? sourceName.slice(0, sourceName.lastIndexOf(".")) : sourceName;
+      const outName = sanitizeFileName(`${stem}_decoded.${ext || "bin"}`);
+      const mime = mimeByExt(ext || "bin");
+      const blob = new Blob([bytes], { type: mime });
+      const url = URL.createObjectURL(blob);
+      createdUrls.push(url);
+
+      const card = document.createElement("article");
+      card.className = "card";
+
+      let thumbHtml = '<div class="thumb" style="display:grid;place-items:center;color:#65776a;font-size:13px;">非图片文件</div>';
+      if (ext && isImageExt(ext)) {
+        thumbHtml = `<img class="thumb" src="${url}" alt="decoded preview" />`;
+      }
+
+      card.innerHTML = `
+        ${thumbHtml}
+        <div class="meta">
+          <div class="name">${outName}</div>
+          <div>来源：${sourceName}</div>
+          <div>大小：${bytesToMB(bytes.length)}</div>
+          <div>规则：${rule}</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="download">下载</button>
+          <button type="button" class="alt remove">移除</button>
+        </div>
+      `;
+
+      const thumb = card.querySelector(".thumb");
+      if (thumb && thumb.tagName === "IMG") {
+        thumb.addEventListener("click", () => {
+          modalImg.src = url;
+          imgModal.classList.add("open");
+        });
+      }
+
+      card.querySelector(".download").addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = outName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+
+      card.querySelector(".remove").addEventListener("click", () => {
+        card.remove();
+        if (!resultGrid.children.length) {
+          resultGrid.innerHTML = '<div class="empty">暂无解码结果</div>';
+        }
+      });
+
+      resultGrid.prepend(card);
+    }
+
+    async function handleFiles(fileList) {
+      const files = [...fileList].filter((f) => f.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(f.name));
+      if (!files.length) {
+        log("未检测到可处理图片文件");
+        return;
+      }
+
+      const password = passwordInput.value || "";
+      for (const file of files) {
+        log(`开始解码：${file.name}`);
+        try {
+          const result = await decodeImage(file, password);
+          addResultCard(file.name, result.ext, result.data, result.rule);
+          log(`成功：${file.name} -> .${result.ext} (${bytesToMB(result.data.length)})`);
+        } catch (e) {
+          log(`失败：${file.name} (${e.message || e})`);
+        }
+      }
+    }
+
+    pickBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach((evt) => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      dropZone.addEventListener(evt, () => dropZone.classList.add("dragover"));
+    });
+
+    ["dragleave", "drop"].forEach((evt) => {
+      dropZone.addEventListener(evt, () => dropZone.classList.remove("dragover"));
+    });
+
+    dropZone.addEventListener("click", (e) => {
+      if (e.target.tagName !== "BUTTON") fileInput.click();
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    });
+
+    clearBtn.addEventListener("click", clearAll);
+
+    imgModal.addEventListener("click", () => {
+      imgModal.classList.remove("open");
+      modalImg.removeAttribute("src");
+    });
+  </script>
+</body>
+</html>
