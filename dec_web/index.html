@@ -279,7 +279,7 @@
         </div>
       </div>
       <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
-      <div class="hint">解码规则：优先新版（上下各跳过 20%），失败自动回退旧版（顶部 5%）。</div>
+      <div class="hint">支持拖拽 / 选择 / Ctrl+V 粘贴图片。解码规则：优先新版（上下各跳过 20%），失败自动回退旧版（顶部 5%）。</div>
       <pre id="log" class="log"></pre>
     </section>
 
@@ -596,6 +596,30 @@
       }
     }
 
+    async function handlePaste(event) {
+      const items = event.clipboardData?.items;
+      if (!items || !items.length) return;
+
+      const pasted = [];
+      let index = 1;
+      for (const item of items) {
+        if (item.kind !== "file") continue;
+        if (!item.type.startsWith("image/")) continue;
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        const ext = (file.type.split("/")[1] || "png").replace("jpeg", "jpg");
+        const renamed = new File([file], `pasted_${Date.now()}_${index}.${ext}`, { type: file.type });
+        pasted.push(renamed);
+        index += 1;
+      }
+
+      if (!pasted.length) return;
+      event.preventDefault();
+      log(`检测到粘贴图片 ${pasted.length} 张，开始解码...`);
+      await handleFiles(pasted);
+    }
+
     pickBtn.addEventListener("click", () => fileInput.click());
     fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
 
@@ -621,6 +645,8 @@
     dropZone.addEventListener("drop", (e) => {
       if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
     });
+
+    document.addEventListener("paste", handlePaste);
 
     clearBtn.addEventListener("click", clearAll);
 
