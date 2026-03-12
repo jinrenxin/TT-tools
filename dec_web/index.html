@@ -195,6 +195,13 @@
       background: #eef3ec;
     }
 
+    .thumb-video {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+      background: #111;
+    }
+
     .meta {
       padding: 10px;
       font-size: 12.5px;
@@ -326,13 +333,22 @@
       return ["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext.toLowerCase());
     }
 
+    function isVideoExt(ext) {
+      return ["mp4", "webm", "ogg", "mov", "m4v"].includes((ext || "").toLowerCase());
+    }
+
     function mimeByExt(ext) {
-      const e = ext.toLowerCase();
+      const e = (ext || "").toLowerCase();
       if (e === "png") return "image/png";
       if (e === "jpg" || e === "jpeg") return "image/jpeg";
       if (e === "webp") return "image/webp";
       if (e === "gif") return "image/gif";
       if (e === "bmp") return "image/bmp";
+      if (e === "mp4") return "video/mp4";
+      if (e === "webm") return "video/webm";
+      if (e === "ogg") return "video/ogg";
+      if (e === "mov") return "video/quicktime";
+      if (e === "m4v") return "video/x-m4v";
       return "application/octet-stream";
     }
 
@@ -533,6 +549,8 @@
       let thumbHtml = '<div class="thumb" style="display:grid;place-items:center;color:#65776a;font-size:13px;">非图片文件</div>';
       if (ext && isImageExt(ext)) {
         thumbHtml = `<img class="thumb" src="${url}" alt="decoded preview" />`;
+      } else if (ext && isVideoExt(ext)) {
+        thumbHtml = `<video class="thumb-video" src="${url}" controls preload="metadata"></video>`;
       }
 
       card.innerHTML = `
